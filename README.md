@@ -103,4 +103,4 @@ All video titles, creator names, and thumbnails fetched by this tool remain the 
 
 ## 📜 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under a Custom Non-Commercial License (Modified MIT License prohibiting sales) - see the [LICENSE](LICENSE) file for details.
