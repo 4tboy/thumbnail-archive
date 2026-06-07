@@ -27,7 +27,7 @@ A locally hosted, minimal web application to fetch and download the highest-reso
 *Replace the placeholder image links below with your screenshots once uploaded to GitHub.*
 
 #### Desktop Interface
-![Desktop Interface Placeholder](https://via.placeholder.com/600x340.png?text=Thumbnail+Archive+Main+Interface)
+![Desktop Interface](src/frontend/screenshot.png)
 
 #### Advanced Options & Formats
 ![Advanced Options Placeholder](https://via.placeholder.com/600x340.png?text=Advanced+Options+and+Formats)
