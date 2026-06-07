@@ -93,6 +93,14 @@ This repository complies with strict publishing rules:
 
 ---
 
+## ⚖️ Disclaimer
+
+This application is for educational and personal use only. The author of this software is not affiliated with YouTube, Google, Vimeo, or any associated platforms. 
+
+All video titles, creator names, and thumbnails fetched by this tool remain the copyrighted property of their respective owners and platforms. By using this tool, you agree to respect copyright laws and the Terms of Service of the respective platforms. The author assumes no responsibility or liability for any misuse of this software.
+
+---
+
 ## 📜 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
