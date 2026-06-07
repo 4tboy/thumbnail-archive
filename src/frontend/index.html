@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Thumbnail Archive</title>
+  <meta name="description" content="Locally hosted high-res thumbnail fetcher for YouTube and Vimeo." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700&family=Manrope:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="icon" type="image/svg+xml" href="../../Thumbnail downloader logo.svg" />
+</head>
+<body>
+
+  <!-- Background visual elements -->
+  <div class="glow-bg glow-bg--primary" aria-hidden="true"></div>
+  <div class="glow-bg glow-bg--secondary" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <!-- Main layout -->
+  <main class="layout">
+    
+    <!-- Header/Hero section -->
+    <header class="hero">
+      <div class="hero__header-row">
+        <div class="hero__logo-wrap">
+          <img src="../../Thumbnail downloader logo.svg" class="hero__logo" alt="Thumbnail Archive Logo" />
+        </div>
+        
+        <!-- Premium Theme Toggle -->
+        <button id="themeToggle" class="theme-toggle" aria-label="Toggle visual theme" title="Toggle theme">
+          <span class="theme-toggle__icon theme-toggle__icon--dark">🌙</span>
+          <span class="theme-toggle__icon theme-toggle__icon--light">☀️</span>
+        </button>
+      </div>
+
+      <p class="hero__eyebrow">High-Resolution Fetcher · v2.0.0</p>
+      <h1 class="hero__title">Thumbnail<br><em>Archive.</em></h1>
+      <p class="hero__sub">
+        Paste any YouTube or Vimeo URL below.
+        The highest quality thumbnail is retrieved instantly.
+      </p>
+    </header>
+
+    <!-- Interactive Search / URL input card -->
+    <section class="card input-card" aria-label="URL input">
+      <div class="field-wrap">
+        <span class="input-icon" aria-hidden="true">🔗</span>
+        <input
+          id="urlInput"
+          class="url-field"
+          type="url"
+          placeholder="Paste YouTube or Vimeo URL and press Enter"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <button id="fetchBtn" class="fetch-btn" aria-label="Fetch thumbnail">
+          <span class="fetch-btn__label">Fetch</span>
+          <span class="fetch-btn__arrow" aria-hidden="true">→</span>
+        </button>
+      </div>
+      <p id="errorMsg" class="error-msg" role="alert" aria-live="polite"></p>
+    </section>
+
+    <!-- Main Results Section (Visible after fetching) -->
+    <section id="resultZone" class="result-zone card" aria-label="Fetched thumbnail" aria-hidden="true">
+      
+      <!-- Metadata Row -->
+      <div class="result-meta">
+        <span class="result-badge" id="platformBadge"></span>
+        <div class="result-info">
+          <span id="resultQuality" class="result-quality"></span>
+          <span id="resultId" class="result-id"></span>
+        </div>
+      </div>
+
+      <!-- Live Thumbnail Preview Frame -->
+      <div class="result-frame">
+        <img id="thumbImg" class="thumb-img" src="" alt="Fetched thumbnail preview" />
+        <div class="thumb-overlay" aria-hidden="true"></div>
+      </div>
+
+      <!-- Action Panel -->
+      <div class="result-actions">
+        <!-- Download Button -->
+        <button id="downloadBtn" class="dl-btn" disabled>
+          <span class="dl-btn__icon" aria-hidden="true">⬇</span>
+          <span class="dl-btn__label">Download Image</span>
+        </button>
+
+        <!-- Advanced Options Toggle -->
+        <button class="adv-toggle" id="advToggle" aria-expanded="false" aria-controls="advPanel" title="Advanced Options">
+          <span class="adv-toggle__gear" aria-hidden="true">⚙️</span>
+          <span class="adv-toggle__label">Options</span>
+        </button>
+
+        <button id="resetBtn" class="reset-btn" aria-label="Fetch another thumbnail">
+          Clear
+        </button>
+      </div>
+
+      <!-- File details metadata -->
+      <p class="dl-filename" id="downloadFilename"></p>
+
+      <!-- Collapsible Advanced Options Panel -->
+      <div class="adv-panel" id="advPanel" aria-hidden="true">
+        <div class="adv-panel__inner">
+          <div class="adv-section">
+            <p class="adv-section__title">⚙️ Image Settings</p>
+            <div class="adv-grid">
+              
+              <!-- Dimensions Select -->
+              <div class="adv-group">
+                <p class="adv-group__label">Resolution / Size</p>
+                <div class="pill-row" role="group" aria-label="Thumbnail size options">
+                  <button class="pill pill--active" data-option="size" data-value="original">Original Size</button>
+                  <button class="pill" data-option="size" data-value="large">Large <span class="pill__sub">1280×720</span></button>
+                  <button class="pill" data-option="size" data-value="medium">Medium <span class="pill__sub">640×360</span></button>
+                  <button class="pill" data-option="size" data-value="small">Small <span class="pill__sub">320×180</span></button>
+                </div>
+              </div>
+
+              <!-- Output Format Select -->
+              <div class="adv-group">
+                <p class="adv-group__label">File Format</p>
+                <div class="pill-row" role="group" aria-label="Output format options">
+                  <button class="pill pill--active" data-option="format" data-value="jpg">JPG</button>
+                  <button class="pill" data-option="format" data-value="png">PNG</button>
+                  <button class="pill" data-option="format" data-value="webp">WebP</button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Session History Section -->
+    <section id="historyZone" class="history-zone card" aria-label="Recent Downloads" aria-hidden="true">
+      <div class="history-header">
+        <h3 class="history-title">Recent Downloads</h3>
+        <button id="clearHistoryBtn" class="history-clear-btn" title="Clear History List">Clear</button>
+      </div>
+      <div id="historyList" class="history-list">
+        <p class="history-empty">Downloads from this session will appear here.</p>
+      </div>
+    </section>
+
+    <!-- Sticky Footer -->
+    <footer class="footer">
+      <div class="footer__content">
+        <span>Locally Hosted • Zero-Dependency API • v2.0.0</span>
+        <button id="shutdownBtn" class="shutdown-btn" title="Stop background process and Quit">
+          <span class="shutdown-btn__icon">⏻</span> Quit Application
+        </button>
+      </div>
+    </footer>
+
+  </main>
+
+  <!-- Server Shutdown overlay screen -->
+  <div id="shutdownScreen" class="shutdown-screen" aria-hidden="true">
+    <div class="shutdown-content">
+      <div class="shutdown-icon">⏻</div>
+      <h2>Application Stopped</h2>
+      <p>All background server processes have been terminated successfully.</p>
+      <div class="shutdown-guide">
+        <p><strong>To relaunch the app:</strong></p>
+        <ul>
+          <li>Double-click the <strong>Thumbnail Archive</strong> Desktop shortcut</li>
+          <li>Or search for it in your Windows <strong>Start Menu</strong></li>
+        </ul>
+      </div>
+      <p class="shutdown-footer">You can safely close this browser tab now.</p>
+    </div>
+  </div>
+
+  <!-- Floating Toast Notifications -->
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+  <!-- Modular script entry -->
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

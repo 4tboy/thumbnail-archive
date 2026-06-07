@@ -1,0 +1,16 @@
+node_modules/
+vendor/
+dist/
+build/
+target/
+coverage/
+.cache/
+.DS_Store
+*.log
+*.tmp
+*.bak
+.env*
+secrets*
+credentials*
+private*
+Thumbs.db

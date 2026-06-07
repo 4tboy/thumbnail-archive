@@ -1,0 +1,13 @@
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Minimalist Background Shape (Soft Alabaster) -->
+  <rect width="120" height="120" rx="30" fill="#F7F5F0"/>
+  
+  <!-- The Thumbnail Frame (Deep Slate - Minimal Lines) -->
+  <rect x="25" y="35" width="70" height="50" rx="6" stroke="#2D3748" stroke-width="4" stroke-linecap="round"/>
+  
+  <!-- The Play / Extract Action (Pastel Sand) -->
+  <path d="M50 48L72 60L50 72V48Z" fill="#D1BFA5"/>
+  
+  <!-- Dramatic Accent Dot (Pastel Sage) -->
+  <circle cx="95" cy="25" r="6" fill="#B5C6C4"/>
+</svg>
