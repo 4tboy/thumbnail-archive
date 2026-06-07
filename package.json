@@ -33,7 +33,7 @@
     "assets": [
       "src/frontend/**/*",
       "icon.ico",
-      "Thumbnail downloader logo.svg",
+      "logo.svg",
       "node_modules/systray2/traybin/**/*"
     ],
     "targets": [

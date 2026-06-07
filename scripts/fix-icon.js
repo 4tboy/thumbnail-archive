@@ -4,7 +4,7 @@ const pngToIco = require('png-to-ico').default;
 
 async function generatePng() {
   try {
-    const svgFile = 'Thumbnail downloader logo.svg';
+    const svgFile = 'logo.svg';
     console.log(`Loading ${svgFile}...`);
     
     await sharp(svgFile)

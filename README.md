@@ -1,16 +1,36 @@
 # Thumbnail Archive 🖼️
 
-A locally hosted, minimal web application to fetch and download the highest-resolution thumbnails from YouTube and Vimeo. Designed with a sleek, premium glassmorphism interface and native Windows system tray integration.
+## 📥 Direct Download
+
+> **Click to Download**: [**Download ThumbnailArchiveSetup_v2.0.0.exe**](https://github.com/4tboy/thumbnail-archive/releases/download/v2.0.0/ThumbnailArchiveSetup_v2.0.0.exe)
+> 
+> *Installs the application locally on your Windows PC. Automatic UAC administrator rights are requested during setup to configure the local domain host.*
+
+---
+
+A locally hosted, minimal web application to fetch and download the highest-resolution thumbnails from YouTube and Vimeo. Designed with a sleek, native-feeling interface and local system tray integration.
 
 ---
 
 ## 🌟 Features
 
 - **High-Resolution Fetching**: Retrieves `maxresdefault.jpg` for YouTube and highest available for Vimeo.
-- **Cross-Origin Download Proxy**: Built-in backend bypasses CORS to allow immediate, direct downloading and canvas processing of images.
+- **Cross-Origin Download Proxy**: Built-in backend bypasses CORS to allow immediate, direct downloading of images.
 - **System Tray Integration**: Minifies to the system tray for a background, always-ready experience.
-- **Premium UI**: Sleek, modern interface, toasts, download history, and option pills.
-- **No API Keys Required**: Utilizes public oEmbed endpoints and checks, requiring zero setup or authentication overhead.
+- **Premium UI**: Clean, dynamic aesthetic with toast notifications, session history, and quality toggles.
+- **Zero API Keys Required**: Completely utilizes public endpoints/oEmbeds, requiring zero authentication overhead.
+
+---
+
+## 📸 Screenshots
+
+*Replace the placeholder image links below with your screenshots once uploaded to GitHub.*
+
+#### Desktop Interface
+![Desktop Interface Placeholder](https://via.placeholder.com/600x340.png?text=Thumbnail+Archive+Main+Interface)
+
+#### Advanced Options & Formats
+![Advanced Options Placeholder](https://via.placeholder.com/600x340.png?text=Advanced+Options+and+Formats)
 
 ---
 
@@ -21,28 +41,27 @@ This project is built using a clean, modular, and industry-standard layout:
 * **Backend**: Node.js, Express.js.
   * Uses Node 18 native global `fetch()` for HTTP requests (no heavy external HTTP clients).
   * System tray integration via `systray2`.
-* **Frontend**: Modern Vanilla JS (ES Modules) & HTML5/CSS3.
-  * Structure split into clean modules: `main.js` (orchestrator), `api.js` (communications), `canvas.js` (WebP/PNG/JPG resizing & formats), and `ui.js` (theme, toasts, list rendering).
-  * Clean **glassmorphism** design using CSS HSL tokens, animations, and transitions.
+* **Frontend**: Modern HTML5, CSS3, and JavaScript.
+  * Served files are placed inside the `src/frontend/` folder.
+  * Standard CSS styling and pure DOM manipulation script.
 
 ### Project Layout
 
 ```
 ├── dist/                          # Compiled binaries (ignored by Git)
 ├── node_modules/                  # Dependencies (ignored by Git)
+├── scripts/                       # Developer utility scripts
+│   └── fix-icon.js                # Icon builder
 ├── src/                           # Application source
 │   ├── backend/                   # Express backend & tray handler
 │   │   ├── server.js
 │   │   └── tray.js
 │   └── frontend/                  # Web app static assets
 │       ├── index.html
-│       ├── css/
-│       │   └── style.css          # Design system, themes & variables
-│       └── js/                    # ES6 frontend modules
-│           ├── api.js
-│           ├── canvas.js
-│           ├── ui.js
-│           └── main.js
+│       ├── logo.svg
+│       ├── logo.webp
+│       ├── script.js
+│       └── style.css
 ├── icon.ico                       # Native app icon
 ├── package.json                   # Build configs and dependencies
 ├── setup.iss                      # Inno Setup compilation file
