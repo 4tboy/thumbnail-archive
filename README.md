@@ -60,7 +60,7 @@ This project is built using a clean, modular, and industry-standard layout:
 ### 2. Installation
 Clone the repository and install dependencies:
 ```bash
-git clone <your-github-repo-url>
+git clone https://github.com/4tboy/thumbnail-archive.git
 cd thumbnail-archive
 npm install
 ```
