@@ -9,7 +9,7 @@ A locally hosted, minimal web application to fetch and download the highest-reso
 - **High-Resolution Fetching**: Retrieves `maxresdefault.jpg` for YouTube and highest available for Vimeo.
 - **Cross-Origin Download Proxy**: Built-in backend bypasses CORS to allow immediate, direct downloading and canvas processing of images.
 - **System Tray Integration**: Minifies to the system tray for a background, always-ready experience.
-- **Premium UI**: Sleek, modern interface supporting a dark/light mode toggle, toasts, download history, and option pills.
+- **Premium UI**: Sleek, modern interface, toasts, download history, and option pills.
 - **No API Keys Required**: Utilizes public oEmbed endpoints and checks, requiring zero setup or authentication overhead.
 
 ---
