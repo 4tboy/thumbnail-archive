@@ -30,7 +30,7 @@ A locally hosted, minimal web application to fetch and download the highest-reso
 ![Desktop Interface](src/frontend/screenshot.png)
 
 #### Advanced Options & Formats
-![Advanced Options Placeholder](https://via.placeholder.com/600x340.png?text=Advanced+Options+and+Formats)
+![Advanced Options](src/frontend/screenshot-options.png)
 
 ---
 
