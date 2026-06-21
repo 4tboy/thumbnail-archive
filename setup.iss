@@ -1,6 +1,6 @@
 ; ============================================================
 ;  Thumbnail Archive – Inno Setup Script
-;  Production Level | Version 1.0.0
+;  Production Level | Version 2.0.0
 ;  Author  : 4tboy
 ;  Compiler: Inno Setup 6.x
 ; ============================================================
@@ -73,7 +73,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Messages]
 ; Customise the welcome & finish page text
 WelcomeLabel1             = Welcome to {#MyAppName} {#MyAppVersion}
-WelcomeLabel2             = This will set up {#MyAppName} on your computer.%n%n%n• Download YouTube & Vimeo thumbnails in full resolution%n• Save video & audio to any folder%n• Runs silently — no terminal window%n%nClick Next to continue.
+WelcomeLabel2             = This will set up {#MyAppName} on your computer.%n%n%n• Download YouTube & Vimeo thumbnails in full resolution%n• Runs silently — no terminal window%n%nClick Next to continue.
 FinishedLabel             = {#MyAppName} has been installed.%n%nClick Finish to launch the app.
 
 ; ============================================================
@@ -88,7 +88,7 @@ Name: "startupicon";  Description: "Launch {#MyAppName} when Windows starts"; Gr
 ; Main executable
 Source: "{#MySourceDir}\dist\{#MyAppExeName}";  DestDir: "{app}"; Flags: ignoreversion
 
-; Supporting launcher & assets
+; Supporting launcher assets
 Source: "{#MySourceDir}\icon.ico";              DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MySourceDir}\silent.vbs";            DestDir: "{app}"; Flags: ignoreversion
 
@@ -116,13 +116,21 @@ Root: HKLM; Subkey: "Software\{#MyAppPublisher}\{#MyAppName}"; ValueType: string
 ; Store installed version for diagnostics / update detection
 Root: HKLM; Subkey: "Software\{#MyAppPublisher}\{#MyAppName}"; ValueType: string; ValueName: "Version"; ValueData: "{#MyAppVersion}"
 
-; Run at startup for all users via Windows Registry Run key (bypasses Windows Defender startup folder blocks)
-Root: HKLM; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "{#MyAppName}"; ValueData: "wscript.exe ""{app}\silent.vbs"" ""{app}\{#MyAppExeName}"""; Flags: uninsdeletevalue; Tasks: startupicon
+; Run at startup — points directly to the exe so that Windows Startup Apps
+; shows the correct "Thumbnail Archive" name and application icon.
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "{#MyAppName}"; ValueData: """{app}\{#MyAppExeName}"" --startup"; Flags: uninsdeletevalue; Tasks: startupicon
 
 ; ============================================================
 [Run]
 ; Launch the app silently when the wizard finishes (user can untick)
-Filename: "wscript.exe"; Parameters: """{app}\silent.vbs"" ""{app}\{#MyAppExeName}"""; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+; Uses --startup flag so the console window is immediately hidden
+Filename: "{app}\{#MyAppExeName}"; Parameters: "--startup"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+
+; ============================================================
+[UninstallRun]
+; Remove the "Run on Startup" registry key that tray.js may have created
+Filename: "reg"; Parameters: "delete ""HKCU\Software\Microsoft\Windows\CurrentVersion\Run"" /v ""Thumbnail Archive"" /f"; Flags: runhidden
+Filename: "reg"; Parameters: "delete ""HKCU\Software\Microsoft\Windows\CurrentVersion\Run"" /v ""ThumbnailArchive"" /f"; Flags: runhidden
 
 ; ============================================================
 [UninstallDelete]

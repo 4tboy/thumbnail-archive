@@ -10,7 +10,7 @@ const path = require('path');
 const fs   = require('fs');
 const { exec, execSync } = require('child_process');
 
-// ─── Menu Item IDs ────────────────────────────────────────
+// ─── Menu Item Sequence IDs ────────────────────────────────
 const MENU = Object.freeze({
   OPEN:    0,
   RESTART: 1,
@@ -28,9 +28,8 @@ const MENU = Object.freeze({
  */
 function loadIconBase64(iconPath) {
   try {
-    const buf = fs.readFileSync(iconPath);
-    return buf.toString('base64');
-  } catch (err) {
+    return fs.readFileSync(iconPath).toString('base64');
+  } catch {
     return '';
   }
 }
@@ -44,6 +43,40 @@ function openBrowser(url) {
             : process.platform === 'darwin' ? `open "${url}"`
             : `xdg-open "${url}"`;
   exec(cmd, { windowsHide: true }, () => {});
+}
+
+/**
+ * Checks whether the app is registered in the Windows Run key.
+ * Searches both HKCU and HKLM, and both the spaced and un-spaced value names.
+ * @returns {boolean}
+ */
+function checkStartupRegistry() {
+  if (process.platform !== 'win32') return false;
+  const keys = [
+    'reg query "HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run" /v "Thumbnail Archive"',
+    'reg query "HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run" /v "ThumbnailArchive"',
+    'reg query "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run" /v "Thumbnail Archive"',
+  ];
+  for (const cmd of keys) {
+    try { execSync(cmd, { stdio: 'ignore' }); return true; } catch { /* not found */ }
+  }
+  return false;
+}
+
+/**
+ * Builds the command-line string used for the startup registry value.
+ * Points directly to the exe (or node + server.js in dev) with --startup flag,
+ * so that Windows Startup Apps shows the correct name and icon.
+ * @param {boolean} isPackaged
+ * @returns {string}
+ */
+function buildStartupCommand(isPackaged) {
+  if (isPackaged) {
+    // Direct exe path — Windows Startup Apps reads the icon/name from this exe
+    return `"${process.execPath}" --startup`;
+  }
+  // Dev: launch node with this script
+  return `"${process.execPath}" "${path.join(__dirname, 'server.js')}" --startup`;
 }
 
 /**
@@ -70,22 +103,11 @@ function startTray({ appVersion, serverUrl, iconPath, onQuit, onRestart, logFn }
   }
 
   const icon = loadIconBase64(iconPath);
-  if (!icon) {
-    log(`[Tray] Warning: Could not load icon from ${iconPath}`);
-  }
+  if (!icon) log(`[Tray] Warning: Could not load icon from ${iconPath}`);
 
-  const isPackaged = typeof process.pkg !== 'undefined';
-  const exePath = isPackaged ? process.execPath : __filename;
-
-  let runOnStartup = false;
-  if (process.platform === 'win32') {
-    try {
-      execSync('reg query HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run /v ThumbnailArchive', { stdio: 'ignore' });
-      runOnStartup = true;
-    } catch (err) {
-      runOnStartup = false;
-    }
-  }
+  const isPackaged    = typeof process.pkg !== 'undefined';
+  const startupCmd    = buildStartupCommand(isPackaged);
+  let   runOnStartup  = checkStartupRegistry();
 
   let systray;
   try {
@@ -96,45 +118,44 @@ function startTray({ appVersion, serverUrl, iconPath, onQuit, onRestart, logFn }
         tooltip: `Thumbnail Archive v${appVersion}`,
         items: [
           {
-            title: '  Open in Browser',
+            title:   'Open in Browser',
             tooltip: `Open ${serverUrl}`,
             checked: false,
             enabled: true,
           },
           {
-            title: '  Restart Server',
+            title:   'Restart Server',
             tooltip: 'Restart the background server',
             checked: false,
             enabled: true,
           },
           {
-            title: '  Run on Startup',
+            title:   'Run on Startup',
             tooltip: 'Start automatically when Windows boots',
             checked: runOnStartup,
             enabled: process.platform === 'win32',
           },
           {
-            title: `  About  (v${appVersion})`,
+            title:   `About  (v${appVersion})`,
             tooltip: 'Thumbnail Archive by 4tboy',
             checked: false,
             enabled: false,
           },
-          // Separator — disabled item with dashes
+          // Separator
           {
-            title: '─────────────',
+            title:   '<SEPARATOR>',
             tooltip: '',
-            checked: false,
-            enabled: false,
+            enabled: true,
           },
           {
-            title: '  Quit',
+            title:   'Quit',
             tooltip: 'Stop server and exit',
             checked: false,
             enabled: true,
           },
         ],
       },
-      debug: false,
+      debug:   false,
       copyDir: isPackaged,
     });
   } catch (err) {
@@ -155,27 +176,33 @@ function startTray({ appVersion, serverUrl, iconPath, onQuit, onRestart, logFn }
         break;
 
       case MENU.STARTUP:
-        if (process.platform === 'win32') {
-          runOnStartup = !runOnStartup;
-          if (runOnStartup) {
-            exec(`reg add HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run /v ThumbnailArchive /t REG_SZ /d "\\"${exePath}\\"" /f`, (err) => {
+        if (process.platform !== 'win32') break;
+        runOnStartup = !runOnStartup;
+
+        if (runOnStartup) {
+          // Clean up legacy key without spaces first
+          exec('reg delete "HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run" /v "ThumbnailArchive" /f', () => {});
+          exec(
+            `reg add "HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run" /v "Thumbnail Archive" /t REG_SZ /d "${startupCmd}" /f`,
+            (err) => {
               if (err) log(`[Tray] Failed to enable startup: ${err.message}`);
-              else log('[Tray] Enabled Run on Startup');
-            });
-          } else {
-            exec(`reg delete HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run /v ThumbnailArchive /f`, (err) => {
-              if (err) log(`[Tray] Failed to disable startup: ${err.message}`);
-              else log('[Tray] Disabled Run on Startup');
-            });
-          }
-          if (action.item) {
-            action.item.checked = runOnStartup;
-            systray.sendAction({
-              type: 'update-item',
-              item: action.item,
-              seq_id: MENU.STARTUP,
-            });
-          }
+              else     log('[Tray] Run on Startup enabled');
+            },
+          );
+        } else {
+          exec('reg delete "HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run" /v "Thumbnail Archive" /f', () => {});
+          exec('reg delete "HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run" /v "ThumbnailArchive" /f', () => {});
+          exec('reg delete "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run" /v "Thumbnail Archive" /f', () => {});
+          log('[Tray] Run on Startup disabled');
+        }
+
+        if (action.item) {
+          action.item.checked = runOnStartup;
+          systray.sendAction({
+            type:   'update-item',
+            item:   action.item,
+            seq_id: MENU.STARTUP,
+          });
         }
         break;
 
@@ -190,7 +217,7 @@ function startTray({ appVersion, serverUrl, iconPath, onQuit, onRestart, logFn }
     }
   });
 
-  log('[Tray] System tray icon started ✓');
+  log('[Tray] System tray icon started');
   return systray;
 }
 

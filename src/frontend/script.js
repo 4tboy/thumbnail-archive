@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════
    Thumbnail Archive — Frontend Script
-   v1.0.0 Production · Pure Thumbnail Downloader
+   Minimalist Version · Pure YouTube & Vimeo Downloader
    ═══════════════════════════════════════════════════════════ */
 
 const API_BASE = window.location.origin;
@@ -10,6 +10,8 @@ const urlInput         = document.getElementById('urlInput');
 const fetchBtn         = document.getElementById('fetchBtn');
 const errorMsg         = document.getElementById('errorMsg');
 const resultZone       = document.getElementById('resultZone');
+const emptyState       = document.getElementById('emptyState');
+const urlHelperText    = document.getElementById('urlHelperText');
 const thumbImg         = document.getElementById('thumbImg');
 const platformBadge    = document.getElementById('platformBadge');
 const resultQuality    = document.getElementById('resultQuality');
@@ -21,8 +23,6 @@ const resetBtn         = document.getElementById('resetBtn');
 // Advanced options
 const advToggle = document.getElementById('advToggle');
 const advPanel  = document.getElementById('advPanel');
-
-
 
 // Premium Session History elements
 const historyZone      = document.getElementById('historyZone');
@@ -89,12 +89,11 @@ const SIZE_MAP = {
   small:    [320,  180],
 };
 
-const QUALITY_RES = { maxres: '1080p', hq: '720p', mq: '480p', hd: '1080p' };
-const SIZE_RES    = { large: '720p', medium: '480p', small: '180p' };
+// Global state
+let currentData    = null;
+let cachedImage    = null;
+let imageHref      = '#';
 
-let currentData     = null;
-let cachedImage     = null;
-let imageHref       = '#';    
 const sessionHistory = [];     
 
 advToggle.addEventListener('click', () => {
@@ -120,8 +119,8 @@ document.querySelectorAll('.pill').forEach(pill => {
 });
 
 function detectPlatform(url) {
-  if (/youtube\.com|youtu\.be/i.test(url)) return 'youtube';
-  if (/vimeo\.com/i.test(url))             return 'vimeo';
+  if (/youtube\.com|youtu\.be/i.test(url)) return { api: 'youtube', name: 'YouTube' };
+  if (/vimeo\.com/i.test(url))             return { api: 'vimeo', name: 'Vimeo' };
   return null;
 }
 
@@ -139,13 +138,15 @@ function sanitizeFilename(str) {
 }
 
 function buildFilename(data, size, format) {
-  const ext        = format === 'jpg' ? 'jpg' : format;
-  const resolution = SIZE_RES[size] || QUALITY_RES[data.quality] || '720p';
-  const platform   = (data.platform || 'video').toLowerCase();
+  const ext        = format === 'jpg' ? 'jpg' : (format === 'webp' ? 'webp' : 'png');
+  const platform     = (data.platform || 'video').toLowerCase();
   const title      = sanitizeFilename(data.title  || data.platform || 'Thumbnail');
   const author     = sanitizeFilename(data.author || data.videoId  || '');
-  const authorPart = author ? ` - ${author}` : '';
-  return `${title}${authorPart} (${resolution}, ${platform}).${ext}`;
+  
+  if (author) {
+    return `${author} - ${title} - ${platform}.${ext}`;
+  }
+  return `${title} - ${platform}.${ext}`;
 }
 
 function canvasToBlob(canvas, mime, quality) {
@@ -279,14 +280,14 @@ if (clearHistoryBtn) {
 }
 
 if (downloadBtn) {
-  downloadBtn.addEventListener('click', () => {
+  downloadBtn.addEventListener('click', async () => {
     if (!currentData) return;
-
     const cleanTitle = currentData.title || 'Thumbnail';
     const size   = options.size;
     const format = options.format;
+
+    // Single download
     const fname  = buildFilename(currentData, size, format);
-    
     const link   = document.createElement('a');
     link.href     = imageHref;
     link.download = fname;
@@ -300,15 +301,28 @@ if (downloadBtn) {
 function renderResult(data, sourceUrl) {
   currentData = { ...data, _sourceUrl: sourceUrl || '' };
 
+  const isEmpty = !data.thumbnailUrl;
+  
+  if (isEmpty) {
+    emptyState.style.display = 'flex';
+    emptyState.setAttribute('aria-hidden', 'false');
+    document.querySelector('.result-frame').style.display = 'none';
+  } else {
+    emptyState.style.display = 'none';
+    emptyState.setAttribute('aria-hidden', 'true');
+    document.querySelector('.result-frame').style.display = 'block';
+  }
+
   platformBadge.textContent = data.platform;
-  platformBadge.className   = `result-badge platform--${data.platform.toLowerCase()}`;
+  let pClass = data.platform.toLowerCase().replace(/[^a-z0-9]/g, '');
+  platformBadge.className   = `result-badge platform--${pClass}`;
   resultQuality.textContent = data.quality ? data.quality.toUpperCase() : '';
   resultId.textContent      = data.videoId || '';
 
   thumbImg.classList.remove('is-loaded');
   thumbImg.alt     = `${data.platform} thumbnail — ${data.videoId}`;
-  thumbImg.src     = data.thumbnailUrl;
-  thumbImg.onload  = () => thumbImg.classList.add('is-loaded');
+  thumbImg.src = `${API_BASE}/api/download?imageUrl=${encodeURIComponent(data.thumbnailUrl)}&filename=preview.jpg`;
+  thumbImg.onload  = () => { thumbImg.classList.add('is-loaded'); };
   thumbImg.onerror = () => {
     thumbImg.src = '';
     showError('Preview failed — the download link should still work.');
@@ -328,6 +342,7 @@ function renderResult(data, sourceUrl) {
   }
 
   downloadFilename.style.display = '';
+  downloadFilename.textContent = buildFilename(currentData, options.size, options.format);
 
   resultZone.setAttribute('aria-hidden', 'false');
   resultZone.classList.add('is-visible');
@@ -353,7 +368,14 @@ function hideResult() {
   }
 }
 
+let fetchController = null;
+let isFetching = false;
+
 async function handleFetch() {
+  if (isFetching && fetchController) {
+    fetchController.abort();
+  }
+  
   const raw = urlInput.value.trim();
   clearError();
 
@@ -361,17 +383,19 @@ async function handleFetch() {
 
   try { new URL(raw); } catch { showError('Please enter a valid URL.'); return; }
 
-  const platform = detectPlatform(raw);
-  if (!platform) {
-    showError('URL not recognised. Please use a YouTube (youtube.com / youtu.be) or Vimeo (vimeo.com) link.');
+  const pInfo = detectPlatform(raw);
+  if (!pInfo) {
+    showError('URL not recognised. Supported platforms: YouTube, Vimeo.');
     return;
   }
 
   hideResult();
   setLoading(true);
+  isFetching = true;
+  fetchController = new AbortController();
 
   try {
-    const res  = await fetch(`${API_BASE}/api/${platform}?url=${encodeURIComponent(raw)}`);
+    const res  = await fetch(`${API_BASE}/api/${pInfo.api}?url=${encodeURIComponent(raw)}`, { signal: fetchController.signal });
     const data = await res.json();
     if (!res.ok) {
       showError(data.error || 'An unexpected error occurred.');
@@ -380,11 +404,13 @@ async function handleFetch() {
     }
     renderResult(data, raw);
     showToast('Link Analyzed', data.title || 'Video info parsed successfully', 'success');
-  } catch {
+  } catch (err) {
+    if (err.name === 'AbortError') return;
     showError("Could not reach the local server. Make sure it's running: node server.js");
     showToast('Connection Failed', 'Local background server is offline', 'error');
   } finally {
     setLoading(false);
+    isFetching = false;
   }
 }
 
@@ -407,9 +433,18 @@ document.addEventListener('paste', (e) => {
 });
 
 urlInput.addEventListener('input', () => {
+  const raw = urlInput.value.trim();
+  if (raw && !/^https?:\/\//i.test(raw)) {
+    if (urlHelperText) urlHelperText.style.display = 'block';
+    urlInput.style.borderColor = 'var(--error)';
+  } else {
+    if (urlHelperText) urlHelperText.style.display = 'none';
+    urlInput.style.borderColor = '';
+  }
   if (errorMsg.textContent) clearError();
   if (currentData) hideResult();
 });
+
 resetBtn.addEventListener('click', () => {
   hideResult(); clearError();
   urlInput.value = '';

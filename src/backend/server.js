@@ -1,28 +1,71 @@
 const fs = require('fs');
 const path = require('path');
-const { exec } = require('child_process');
+const { exec, execSync, spawn } = require('child_process');
+const os = require('os');
 
 const isPackaged = typeof process.pkg !== 'undefined';
 const executableDir = isPackaged ? path.dirname(process.execPath) : path.join(__dirname, '../..');
 
+const APP_DATA_DIR = path.join(process.env.LOCALAPPDATA || process.env.APPDATA || os.tmpdir(), 'ThumbnailArchive');
+if (!fs.existsSync(APP_DATA_DIR)) fs.mkdirSync(APP_DATA_DIR, { recursive: true });
+
+// ─── Silent / hidden launch ──────────────────────────────────────────────────
+// Hide the console window immediately when launched via --startup, --hidden,
+// or when running as a packaged exe.  Developers can force visibility with
+// --show-console.  Uses a tiny PowerShell heredoc to call ShowWindow(0).
+const ARGS = new Set(process.argv.slice(2));
+const FORCE_SHOW = ARGS.has('--show-console');
+const SHOULD_HIDE = !FORCE_SHOW && (isPackaged || ARGS.has('--startup') || ARGS.has('--hidden'));
+
+function hideConsoleWindow() {
+  if (process.platform !== 'win32' || !SHOULD_HIDE) return;
+  try {
+    const psCode = [
+      'Add-Type -TypeDefinition @"',
+      'using System; using System.Runtime.InteropServices;',
+      'public class _Win32 {',
+      '  [DllImport("kernel32.dll")] public static extern IntPtr GetConsoleWindow();',
+      '  [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int n);',
+      '}',
+      '"@ -ErrorAction SilentlyContinue',
+      '$h = [_Win32]::GetConsoleWindow()',
+      'if ($h -ne [IntPtr]::Zero) { [_Win32]::ShowWindow($h, 0) | Out-Null }',
+    ].join('\n');
+    const psFile = path.join(APP_DATA_DIR, '_hide.ps1');
+    fs.writeFileSync(psFile, psCode, 'utf8');
+    execSync(`powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "${psFile}"`, { windowsHide: true });
+  } catch { /* best-effort */ }
+}
+
+hideConsoleWindow();
+
+// ─── --version flag ──────────────────────────────────────────────────────────
+if (ARGS.has('--version')) {
+  const { version } = require('../../package.json');
+  console.log(version);
+  process.exit(0);
+}
+
+// No configuration or core directory needed
+
 function logToFile(msg) {
   try {
-    const logDir = process.env.LOCALAPPDATA || process.env.APPDATA || require('os').tmpdir();
-    const logFile = path.join(logDir, 'ThumbnailArchive-debug.log');
+    const logFile = path.join(APP_DATA_DIR, 'ThumbnailArchive-debug.log');
     fs.appendFileSync(logFile, `[${new Date().toISOString()}] ${msg}\n`);
   } catch (e) {}
 }
 
-process.on('uncaughtException', (err) => {
-  logToFile(`[UNCAUGHT EXCEPTION] ${err.message}\n${err.stack}`);
-  process.exit(1);
-});
+// Track systray instance for cleanup on crash
+let _trayInstance = null;
 
-process.on('unhandledRejection', (reason) => {
-  const msg = reason instanceof Error ? `${reason.message}\n${reason.stack}` : String(reason);
-  logToFile(`[UNHANDLED REJECTION] ${msg}`);
+function _crashCleanup(label, detail) {
+  logToFile(`[${label}] ${detail}`);
+  try { if (_trayInstance) _trayInstance.kill(false); } catch { /* ignore */ }
   process.exit(1);
-});
+}
+
+process.on('uncaughtException',   (err)    => _crashCleanup('UNCAUGHT EXCEPTION',  `${err.message}\n${err.stack}`));
+process.on('unhandledRejection',  (reason) => _crashCleanup('UNHANDLED REJECTION', reason instanceof Error ? `${reason.message}\n${reason.stack}` : String(reason)));
 
 if (process.platform === 'win32') {
   const overrideStream = (streamName) => {
@@ -52,8 +95,27 @@ let PORT = 80;
 const FALLBACK_PORT = 23456;
 const STATIC_DIR = path.join(__dirname, '../frontend');
 
-app.use(cors());
+app.use(cors({ origin: ['http://localhost', 'http://127.0.0.1', 'http://ta.tool'] }));
 app.use(express.json());
+
+const rateLimit = require('express-rate-limit');
+
+// Rate limiter for API routes
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  message: { error: 'Too many requests — please wait a minute and try again.' },
+});
+
+app.use('/api/youtube', apiLimiter);
+app.use('/api/vimeo',   apiLimiter);
+
+app.use((err, req, res, next) => {
+  if (err.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'Payload Too Large (Max 5MB)' });
+  }
+  next(err);
+});
 
 app.use((_req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -61,6 +123,7 @@ app.use((_req, res, next) => {
 });
 
 app.use(express.static(STATIC_DIR));
+
 
 // Check if upstream URL exists (using Node 18 native fetch)
 async function urlExists(url) {
@@ -96,7 +159,8 @@ function extractYouTubeID(url) {
 
 app.get('/api/youtube', async (req, res) => {
   const { url } = req.query;
-  if (!url) return res.status(400).json({ error: 'URL parameter is required.' });
+  if (!url || typeof url !== 'string' || url === 'null' || url === 'undefined') return res.status(400).json({ error: 'Valid URL parameter is required.' });
+  if (!/^https?:\/\//i.test(url)) return res.status(400).json({ error: 'URL must start with http:// or https://' });
 
   const videoId = extractYouTubeID(url);
   if (!videoId) return res.status(400).json({ error: 'Could not extract a valid YouTube video ID from that URL.' });
@@ -129,7 +193,8 @@ app.get('/api/youtube', async (req, res) => {
 
 app.get('/api/vimeo', async (req, res) => {
   const { url } = req.query;
-  if (!url) return res.status(400).json({ error: 'URL parameter is required.' });
+  if (!url || typeof url !== 'string' || url === 'null' || url === 'undefined') return res.status(400).json({ error: 'Valid URL parameter is required.' });
+  if (!/^https?:\/\//i.test(url)) return res.status(400).json({ error: 'URL must start with http:// or https://' });
 
   const vimeoIdMatch = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
   if (!vimeoIdMatch) return res.status(400).json({ error: 'Could not extract a valid Vimeo video ID from that URL.' });
@@ -165,16 +230,11 @@ app.get('/api/download', async (req, res) => {
   const { imageUrl, filename } = req.query;
   if (!imageUrl || !filename) return res.status(400).json({ error: 'Missing imageUrl or filename.' });
 
-  const allowedHosts = ['img.youtube.com', 'i.vimeocdn.com', 'vumbnail.com'];
   let parsedUrl;
   try {
     parsedUrl = new URL(imageUrl);
   } catch {
     return res.status(400).json({ error: 'Invalid image URL.' });
-  }
-
-  if (!allowedHosts.some((h) => parsedUrl.hostname.endsWith(h))) {
-    return res.status(403).json({ error: 'Domain not permitted for proxied download.' });
   }
 
   try {
@@ -185,9 +245,10 @@ app.get('/api/download', async (req, res) => {
       });
     }
 
+    const safeFilename = filename.replace(/[^a-zA-Z0-9.\-_ ()]/g, '');
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${safeFilename}"`);
     res.setHeader('Content-Type', 'image/jpeg');
 
     const arrayBuffer = await imgRes.arrayBuffer();
@@ -215,42 +276,57 @@ let SERVER_URL = '';
 let httpServer = null;
 
 function startServer(portToTry) {
-  httpServer = app.listen(portToTry)
+  httpServer = app.listen(portToTry, '127.0.0.1')
     .on('listening', () => {
-      PORT = portToTry;
-      SERVER_URL = PORT === 80 ? 'http://ta.tool' : `http://ta.tool:${PORT}`;
-      
-      console.log(`\n  ✦ Thumbnail Archive v${APP_VERSION} running at ${SERVER_URL}\n`);
+      PORT = httpServer.address().port;
+      SERVER_URL = PORT === 80 ? 'http://ta.tool' : `http://127.0.0.1:${PORT}`;
+
+      console.log(`\n  ✦ Thumbnail Archive v${APP_VERSION} running at ${SERVER_URL}`);
+      console.log(`  → Open your browser at: ${SERVER_URL}\n`);
       logToFile(`[Server] Listening on port ${PORT}`);
 
       const iconPath = path.join(executableDir, 'icon.ico');
 
-      startTray({
+      _trayInstance = startTray({
         appVersion: APP_VERSION,
-        serverUrl: SERVER_URL,
+        serverUrl:  SERVER_URL,
         iconPath,
         onQuit: () => process.exit(0),
-        onRestart: () => {},
+        onRestart: () => {
+          logToFile('[Server] Restart requested from Tray');
+          const args = isPackaged
+            ? ['--startup']
+            : [...process.argv.slice(1), '--startup'];
+          const child = spawn(process.execPath, args, {
+            detached:    true,
+            stdio:       'ignore',
+            windowsHide: true,
+          });
+          child.unref();
+          process.exit(0);
+        },
         logFn: logToFile,
       });
 
-      const platform = process.platform;
-      const cmd = platform === 'win32' ? `start "" "${SERVER_URL}"` :
-                  platform === 'darwin' ? `open "${SERVER_URL}"` :
-                                          `xdg-open "${SERVER_URL}"`;
-      
-      exec(cmd, { windowsHide: true }, (err) => {
-        if (err) console.log(`  → Open your browser at: ${SERVER_URL}`);
-      });
+      // Auto-open browser unless this was a silent startup launch
+      if (!ARGS.has('--startup') && !ARGS.has('--hidden')) {
+        exec(
+          process.platform === 'win32' ? `start "" "${SERVER_URL}"` : `open "${SERVER_URL}"`,
+          { windowsHide: true },
+          () => {},
+        );
+      }
     })
     .on('error', (err) => {
       if (err.code === 'EADDRINUSE') {
         logToFile(`[Server] Port ${portToTry} is in use.`);
         if (portToTry === 80) {
-          logToFile(`[Server] Retrying on fallback port ${FALLBACK_PORT}...`);
-          startServer(FALLBACK_PORT);
+          // Another instance is already running — open the browser to it and exit
+          logToFile('[Server] Another instance detected. Opening browser to existing instance.');
+          exec('start "" "http://ta.tool"', { windowsHide: true }, () => {});
+          process.exit(0);
         } else {
-          logToFile(`[Server] Fatal error: Fallback port ${FALLBACK_PORT} is also in use.`);
+          logToFile('[Server] Fatal error: Fallback port is also in use.');
           process.exit(1);
         }
       } else {

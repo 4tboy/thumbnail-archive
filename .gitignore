@@ -14,3 +14,7 @@ secrets*
 credentials*
 private*
 Thumbs.db
+
+# Local untracked design/development assets
+cloud_layers.jpeg
+artifacts_screenshots/

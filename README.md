@@ -8,7 +8,7 @@
 
 ---
 
-A locally hosted, minimal web application to fetch and download the highest-resolution thumbnails from YouTube and Vimeo. Designed with a sleek, native-feeling interface and local system tray integration.
+A powerful EXE downloader that runs 100% locally, requires zero dependencies, and delivers fast, reliable, always-available performance. Designed with a sleek, native-feeling interface and local system tray integration.
 
 ---
 
