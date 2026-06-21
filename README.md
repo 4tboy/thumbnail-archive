@@ -2,7 +2,7 @@
 
 ## 📥 Direct Download
 
-> **Click to Download**: [**Download ThumbnailArchiveSetup_v2.0.0.exe**](https://github.com/4tboy/thumbnail-archive/releases/download/v2.0.0/ThumbnailArchiveSetup_v2.0.0.exe)
+> **Click to Download**: [**Download ThumbnailArchiveSetup_v3.0.0.exe**](https://github.com/4tboy/thumbnail-archive/releases/download/v3.0.0/ThumbnailArchiveSetup_v3.0.0.exe)
 > 
 > *Installs the application locally on your Windows PC. Automatic UAC administrator rights are requested during setup to configure the local domain host.*
 
@@ -50,8 +50,6 @@ This project is built using a clean, modular, and industry-standard layout:
 ```
 ├── dist/                          # Compiled binaries (ignored by Git)
 ├── node_modules/                  # Dependencies (ignored by Git)
-├── scripts/                       # Developer utility scripts
-│   └── fix-icon.js                # Icon builder
 ├── src/                           # Application source
 │   ├── backend/                   # Express backend & tray handler
 │   │   ├── server.js
@@ -64,8 +62,7 @@ This project is built using a clean, modular, and industry-standard layout:
 │       └── style.css
 ├── icon.ico                       # Native app icon
 ├── package.json                   # Build configs and dependencies
-├── setup.iss                      # Inno Setup compilation file
-└── silent.vbs                     # Background launcher utility
+└── setup.iss                      # Inno Setup compilation file
 ```
 
 ---

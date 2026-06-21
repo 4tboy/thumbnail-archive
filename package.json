@@ -1,7 +1,7 @@
 {
   "name": "thumbnail-archive",
   "productName": "Thumbnail Archive",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "A powerful EXE downloader that runs 100% locally, requires zero dependencies, and delivers fast, reliable, always-available performance.",
   "main": "src/backend/server.js",
   "bin": "src/backend/server.js",
@@ -10,7 +10,7 @@
     "dev": "nodemon src/backend/server.js",
     "build": "pkg . --targets node18-win-x64 --output dist/ThumbnailArchive.exe --compress GZip",
     "build:installer": "powershell -c \"Start-Process -FilePath '%LOCALAPPDATA%\\Programs\\Inno Setup 6\\ISCC.exe' -ArgumentList 'setup.iss' -NoNewWindow -Wait\"",
-    "run:installer": "powershell -c \"Start-Process -FilePath 'dist\\ThumbnailArchiveSetup_v2.0.0.exe' -Verb RunAs\"",
+    "run:installer": "powershell -c \"Start-Process -FilePath 'dist\\ThumbnailArchiveSetup_v3.0.0.exe' -Verb RunAs\"",
     "release": "npm run build && npm run build:installer",
     "release:run": "npm run build && npm run build:installer && npm run run:installer"
   },

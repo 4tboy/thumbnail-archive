@@ -1,13 +1,13 @@
 ; ============================================================
 ;  Thumbnail Archive – Inno Setup Script
-;  Production Level | Version 2.0.0
+;  Production Level | Version 3.0.0
 ;  Author  : 4tboy
 ;  Compiler: Inno Setup 6.x
 ; ============================================================
 
 ; --------------- Compile-time constants ---------------------
 #define MyAppName        "Thumbnail Archive"
-#define MyAppVersion     "2.0.0"
+#define MyAppVersion     "3.0.0"
 #define MyAppPublisher   "4tboy"
 #define MyAppURL         "https://github.com/4tboy"
 #define MyAppExeName     "ThumbnailArchive.exe"
@@ -90,7 +90,6 @@ Source: "{#MySourceDir}\dist\{#MyAppExeName}";  DestDir: "{app}"; Flags: ignorev
 
 ; Supporting launcher assets
 Source: "{#MySourceDir}\icon.ico";              DestDir: "{app}"; Flags: ignoreversion
-Source: "{#MySourceDir}\silent.vbs";            DestDir: "{app}"; Flags: ignoreversion
 
 ; ============================================================
 [Dirs]
@@ -99,11 +98,11 @@ Name: "{app}\Downloads"; Permissions: users-full
 
 ; ============================================================
 [Icons]
-; Start menu shortcut — launched via silent.vbs (no console window)
-Name: "{group}\{#MyAppName}"; Filename: "wscript.exe"; Parameters: """{app}\silent.vbs"" ""{app}\{#MyAppExeName}"""; IconFilename: "{app}\icon.ico"; Comment: "Open {#MyAppName}"
+; Start menu shortcut — launched directly (self-hiding console)
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\icon.ico"; Comment: "Open {#MyAppName}"
 
 ; Desktop shortcut (only created when task is selected)
-Name: "{autodesktop}\{#MyAppName}"; Filename: "wscript.exe"; Parameters: """{app}\silent.vbs"" ""{app}\{#MyAppExeName}"""; IconFilename: "{app}\icon.ico"; Comment: "Open {#MyAppName}"; Tasks: desktopicon
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\icon.ico"; Comment: "Open {#MyAppName}"; Tasks: desktopicon
 
 ; Uninstall shortcut in Start menu group
 Name: "{group}\Uninstall {#MyAppName}"; Filename: "{uninstallexe}"; IconFilename: "{app}\icon.ico"
